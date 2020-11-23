@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Swipe between maps</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+<script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css" rel="stylesheet" />
+<style>
+  body { margin: 0; padding: 0; }
+  #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+</style>
+</head>
+<body>
+<style>
+    body {
+        overflow: hidden;
+    }
+
+    body * {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+
+    .map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+    }
+</style>
+<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-compare/v0.4.0/mapbox-gl-compare.js"></script>
+<link
+    rel="stylesheet"
+    href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-compare/v0.4.0/mapbox-gl-compare.css"
+    type="text/css"
+/>
+<div id="comparison-container">
+    <div id="before" class="map"></div>
+    <div id="after" class="map"></div>
+</div>
+<script>
+  mapboxgl.accessToken = 'pk.eyJ1IjoiaW52aWN0dXN5aW5nIiwiYSI6ImNrMWs4MmJ4dDI4d3gzaXMxZjR6bDQxZ2wifQ.TuI7ofr_DGyXW7ItqqRCvw';
+    var beforeMap = new mapboxgl.Map({
+        container: 'before',
+        style: 'mapbox://styles/mapbox/light-v10',
+        center: [-73.9, 40.75],
+        zoom: 11
+    });
+
+    beforeMap.on('load', function() {
+
+      beforeMap.addSource('nyc_taxi_pickup', {
+        type: 'geojson',
+        data: 'https://raw.githubusercontent.com/InvictusYing/SSCI-591/main/data/pickup_data.geojson'
+      });
+      // add heatmap layer here
+      beforeMap.addLayer({
+        id: 'nyc_taxi_pickup-heat',
+        type: 'heatmap',
+        source: 'nyc_taxi_pickup',
+        maxzoom: 15,
+        paint: {
+        // increase weight as diameter breast height increases
+        'heatmap-weight': {
+          property: 'trip_duration',
+          type: 'exponential',
+          stops: [
+                [1, 0],
+                [62, 1]
+                        ]
+                      },
+            // increase intensity as zoom level increases
+            'heatmap-intensity': {
+            stops: [
+                [11, 1],
+                [15, 3]
+              ]
+            },
+            // assign color values be applied to points depending on their density
+            'heatmap-color': [
+              'interpolate',
+              ['linear'],
+              ['heatmap-density'],
+              0,'rgba(33,102,172,0)',
+              0.2,'rgb(103,169,207)',
+              0.4,'rgb(209,229,240)',
+              0.6,'rgb(253,219,199)',
+              0.8,'rgb(239,138,98)',
+              1.0,'rgb(178,24,43)'
+            ],
+            // increase radius as zoom increases
+            'heatmap-radius': {
+              stops: [
+                [11, 15],
+                [15, 20]
+              ]
+            },
+            // decrease opacity to transition into the circle layer
+            'heatmap-opacity': {
+              default: 1,
+              stops: [
+                [14, 1],
+                [15, 0]
+              ]
+            },
+          }
+        }, 'waterway-label');
+      // add circle layer here
+      beforeMap.addLayer({
+        id: 'nyc_taxi_pickup-point',
+        type: 'circle',
+        source: 'nyc_taxi_pickup',
+        minzoom: 14,
+        paint: {
+          // increase the radius of the circle as the zoom level and trip duration value increases
+          'circle-radius': {
+            property: 'trip_duration',
+            type: 'exponential',
+            stops: [
+              [{ zoom: 15, value: 1 }, 5],
+              [{ zoom: 15, value: 62 }, 10],
+              [{ zoom: 22, value: 1 }, 20],
+              [{ zoom: 22, value: 62 }, 50],
+            ]
+          },
+          'circle-color': {
+            property: 'trip_duration',
+            type: 'exponential',
+            stops: [
+              [300, 'rgba(236,222,239,0)'],
+              [500, 'rgb(236,222,239)'],
+              [700, 'rgb(208,209,230)'],
+              [900, 'rgb(166,189,219)'],
+              [1100, 'rgb(103,169,207)'],
+              [1300, 'rgb(28,144,153)'],
+              [1500, 'rgb(1,108,89)']
+            ]
+          },
+          'circle-stroke-color': 'white',
+          'circle-stroke-width': 1,
+          'circle-opacity': {
+            stops: [
+              [14, 0],
+              [15, 1]
+            ]
+          }
+        }
+      }, 'waterway-label');
+    });
+
+    beforeMap.on('click', 'nyc_taxi_pickup-point', function (e) {
+      new mapboxgl.Popup()
+      .setLngLat(e.features[0].geometry.coordinates)
+      .setHTML('<b>Trip Duration:</b> ' + e.features[0].properties.trip_duration)
+      .addTo(beforeMap);
+    });
+
+    var afterMap = new mapboxgl.Map({
+        container: 'after',
+        style: 'mapbox://styles/mapbox/dark-v10',
+        center: [-73.9, 40.75],
+        zoom: 11
+    });
+
+        afterMap.on('load', function() {
+
+      afterMap.addSource('nyc_taxi_pickup', {
+        type: 'geojson',
+        data: 'https://raw.githubusercontent.com/InvictusYing/SSCI-591/main/data/dropoff_data.geojson'
+      });
+      // add heatmap layer here
+      afterMap.addLayer({
+        id: 'nyc_taxi_pickup-heat',
+        type: 'heatmap',
+        source: 'nyc_taxi_pickup',
+        maxzoom: 15,
+        paint: {
+        // increase weight as diameter breast height increases
+        'heatmap-weight': {
+          property: 'trip_duration',
+          type: 'exponential',
+          stops: [
+                [1, 0],
+                [62, 1]
+                        ]
+                      },
+            // increase intensity as zoom level increases
+            'heatmap-intensity': {
+            stops: [
+                [11, 1],
+                [15, 3]
+              ]
+            },
+            // assign color values be applied to points depending on their density
+            'heatmap-color': [
+              'interpolate',
+              ['linear'],
+              ['heatmap-density'],
+              0,'rgba(33,102,172,0)',
+              0.2,'rgb(103,169,207)',
+              0.4,'rgb(209,229,240)',
+              0.6,'rgb(253,219,199)',
+              0.8,'rgb(239,138,98)',
+              1.0,'rgb(178,24,43)'
+            ],
+            // increase radius as zoom increases
+            'heatmap-radius': {
+              stops: [
+                [11, 15],
+                [15, 20]
+              ]
+            },
+            // decrease opacity to transition into the circle layer
+            'heatmap-opacity': {
+              default: 1,
+              stops: [
+                [14, 1],
+                [15, 0]
+              ]
+            },
+          }
+        }, 'waterway-label');
+      // add circle layer here
+      afterMap.addLayer({
+        id: 'nyc_taxi_pickup-point',
+        type: 'circle',
+        source: 'nyc_taxi_pickup',
+        minzoom: 14,
+        paint: {
+          // increase the radius of the circle as the zoom level and trip duration value increases
+          'circle-radius': {
+            property: 'trip_duration',
+            type: 'exponential',
+            stops: [
+              [{ zoom: 15, value: 1 }, 5],
+              [{ zoom: 15, value: 62 }, 10],
+              [{ zoom: 22, value: 1 }, 20],
+              [{ zoom: 22, value: 62 }, 50],
+            ]
+          },
+          'circle-color': {
+            property: 'trip_duration',
+            type: 'exponential',
+            stops: [
+              [300, 'rgba(236,222,239,0)'],
+              [500, 'rgb(236,222,239)'],
+              [700, 'rgb(208,209,230)'],
+              [900, 'rgb(166,189,219)'],
+              [1100, 'rgb(103,169,207)'],
+              [1300, 'rgb(28,144,153)'],
+              [1500, 'rgb(1,108,89)']
+            ]
+          },
+          'circle-stroke-color': 'white',
+          'circle-stroke-width': 1,
+          'circle-opacity': {
+            stops: [
+              [14, 0],
+              [15, 1]
+            ]
+          }
+        }
+      }, 'waterway-label');
+    });
+
+    afterMap.on('click', 'nyc_taxi_pickup-point', function (e) {
+      new mapboxgl.Popup()
+      .setLngLat(e.features[0].geometry.coordinates)
+      .setHTML('<b>Trip Duration:</b> ' + e.features[0].properties.trip_duration)
+      .addTo(afterMap);
+    });
+
+    // A selector or reference to HTML element
+    var container = '#comparison-container';
+
+    var map = new mapboxgl.Compare(beforeMap, afterMap, container, {
+        // Set this to enable comparing two maps by mouse movement:
+        // mousemove: true
+    });
+</script>
+
+</body>
+</html>
